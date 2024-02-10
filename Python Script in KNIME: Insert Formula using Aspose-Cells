@@ -1,0 +1,55 @@
+import pandas as pd
+from pandas import DataFrame
+import pickle			
+from pickle import TRUE			
+import jpype			
+import asposecells			
+jpype.startJVM()			
+from asposecells.api import License, Workbook, CellsHelper, CalculationOptions, SaveFormat, PdfSaveOptions, PivotFieldType, PivotTableStyleType, PivotFieldSubtotalType, LoadOptions, FileFormatType, ShiftType, CellArea			
+
+try:
+    lic = License()
+    lic.setLicense("/opt/knime_server/aspose/Aspose.Cells.Product.Family.lic")
+except:
+    pass
+
+Filepath = flow_variables['output_Working_filePath']
+
+# Load KNIME Data table to Pandas Dataframe
+df1 = input_table_1.copy()
+
+#Use openpyxl to open Excel file
+wb = Workbook(Filepath)
+
+# Insert Formula ###############################################################
+
+# Loop through List of Sheets
+sheet_lst = pd.unique(df1['Sheet_Position'])
+
+for l in sheet_lst:
+      print(l)
+      sheet = l
+      ws = wb.getWorksheets().get(sheet)
+      df4 = df1[df1['Sheet_Position'] == sheet]
+      for row in df4.itertuples(index=True, name='Pandas'):
+            # Set the cell to be updated
+            cell = getattr(row, "Cell_Address")
+            # Update the Sheet / Cell with the Value
+            f = "=" + getattr(row, "Formula")
+            print(f)
+            try:
+                ws.getCells().get(cell).setFormula(f)
+            except:
+                g = "='" + getattr(row, "Formula")
+                print(g)
+                ws.getCells().get(cell).setFormula(g)
+
+wb.calculateFormula()
+try:
+    wb.getWorksheets().removeAt("Evaluation Warning")
+except:
+    pass
+wb.save(Filepath, FileFormatType.XLSX) #saves as XLSX filetype	
+jpype.shutdownJVM()	
+
+output_table_1 = pd.DataFrame({"Location":[Filepath]})
