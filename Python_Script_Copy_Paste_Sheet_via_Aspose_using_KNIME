@@ -1,0 +1,131 @@
+import pandas as pd			
+from pandas import DataFrame
+import ast		
+import pickle			
+from pickle import TRUE			
+import jpype			
+import asposecells	
+
+#Define conversion of column number to column letter
+def getColumnName(n):
+    # initialize output string as empty
+    result = '' 
+    while n > 0: 
+        # find the index of the next letter and concatenate the letter
+        # to the solution
+ 
+        # here index 0 corresponds to 'A', and 25 corresponds to 'Z'
+        index = (n - 1) % 26
+        result += chr(index + ord('A'))
+        n = (n - 1) // 26
+ 
+    return result[::-1]
+    
+jpype.startJVM()			
+from asposecells.api import License, Workbook, CellsHelper, CalculationOptions, SaveFormat, PdfSaveOptions, PivotFieldType, PivotTableStyleType, PivotFieldSubtotalType, LoadOptions, FileFormatType, ShiftType, CellArea, ConsolidationFunction, Color			
+
+try:
+    lic = License()
+    lic.setLicense("/opt/knime_server/aspose/Aspose.Cells.Product.Family.lic")
+except:
+    pass
+
+# Load KNIME Data table to Pandas Dataframe
+df1 = input_table_1.copy()
+
+# create dataframe with unique Sheet_Position
+dst_lst = df1.drop_duplicates(subset=['Dest_Filepath'], keep='first')
+src_lst = df1.drop_duplicates(subset=['Source_Filepath'], keep='first')
+
+# Open all required Source and Destination Files
+for row in dst_lst.itertuples(index=True, name='Pandas'):
+    dst_var = getattr(row, "dest_var")
+    dst_file = getattr(row, "Dest_Filepath")
+    globals()[dst_var] = Workbook(dst_file)
+
+for row in src_lst.itertuples(index=True, name='Pandas'):
+    src_var = getattr(row, "source_var")
+    src_file = getattr(row, "Source_Filepath")
+    skip_file = getattr(row, "Skip_Fileread")
+    if skip_file == "~SKIP~":
+        pass
+    else:
+        globals()[src_var] = Workbook(src_file)
+
+grp_lst = pd.unique(df1['Counter'])
+
+for l in grp_lst:
+    grp = l
+    df2 = df1[df1['Counter'] == grp]
+    for row in df2.itertuples(index=True, name='Pandas'):
+        dst_var = getattr(row, "dest_var")
+        src_var = getattr(row, "source_var")
+        row_overlap = getattr(row, "Table_Overlap")
+        dst_sheet = getattr(row, "Dest_Sheet_Position")
+        src_sheet = getattr(row, "Source_Sheet")
+        start_row = getattr(row, "Start_Row")
+        add_row = getattr(row, "Insert_Row")
+        ext_src = getattr(row, "External_Source")
+        copy_all = getattr(row, "Whole_Sheet")
+        start_cell = getattr(row, "Start_Cell")
+        last_cell = getattr(row, "Last_Cell")
+        paste_startcell = getattr(row, "Paste_Cell")
+        paste_lastcell = getattr(row, "Paste_Last_Cell")
+        format_style = getattr(row, "Format_Style")
+        output = globals()[dst_var]		
+        input = globals()[src_var]
+        if row_overlap == "YES":
+            output.getWorksheets().get(dst_sheet).getCells().insertRows(start_row,add_row)
+        else:
+            pass
+        if ext_src == "YES":
+            if copy_all == "YES":
+                input.getWorksheets().get(src_sheet).getCells().removeFormulas() #Formula to Paste Values
+                output.getWorksheets().get(dst_sheet).copy(input.getWorksheets().get(src_sheet)) #Copy all worksheet
+            else:
+                input.getWorksheets().get(src_sheet).getCells().removeFormulas() #Formula to Paste Values
+                input_range = input.getWorksheets().get(src_sheet).getCells().createRange(start_cell,last_cell)	#copy
+                paste_range = output.getWorksheets().get(dst_sheet).getCells().createRange(paste_startcell,paste_lastcell) #setup paste coordinates
+                paste_range.copyData(input_range)
+                if format_style == "YES":
+                    paste_range.copyStyle(input_range)	
+                else:
+                    pass			
+        else:
+            if copy_all == "YES":
+                output.calculateFormula()
+                output.getWorksheets().get(src_sheet).getCells().removeFormulas() #Formula to Paste Values
+                max_colnum = output.getWorksheets().get(src_sheet).getCells().getMaxColumn()
+                max_rownum = output.getWorksheets().get(src_sheet).getCells().getMaxRow()
+                max_colstr = getColumnName(max_colnum+1)
+                output_range = output.getWorksheets().get(src_sheet).getCells().createRange("A1",max_colstr + str(max_rownum+1)) #copy
+                paste_range = output.getWorksheets().get(dst_sheet).getCells().createRange("A1",max_colstr + str(max_rownum+1)) #setup paste coordinates
+                paste_range.copyData(output_range)				
+                if format_style == "YES":
+                    paste_range.copyStyle(output_range)	
+                else:
+                    pass	
+            else:
+                output.calculateFormula()
+                output.getWorksheets().get(src_sheet).getCells().removeFormulas() #Formula to Paste Values
+                output_range = output.getWorksheets().get(src_sheet).getCells().createRange(start_cell,last_cell) #copy
+                paste_range = output.getWorksheets().get(dst_sheet).getCells().createRange(paste_startcell,paste_lastcell) #setup paste coordinates
+                paste_range.copyData(output_range)				
+                if format_style == "YES":
+                    paste_range.copyStyle(output_range)				
+                else:
+                    pass
+
+for l in grp_lst:
+    grp = l
+    df2 = df1[df1['Counter'] == grp]
+    for row in dst_lst.itertuples(index=True, name='Pandas'):
+        Filepath = getattr(row, "Dest_Filepath")
+        try:
+            output.getWorksheets().removeAt("Evaluation Warning")
+        except:
+            pass
+        output.save(Filepath, FileFormatType.XLSX) #saves as XLSX filetype
+                    
+jpype.shutdownJVM()	
+output_table_1 = input_table_1.copy()
