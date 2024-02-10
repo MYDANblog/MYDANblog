@@ -1,0 +1,169 @@
+import pandas as pd
+from pandas import DataFrame
+import pickle			
+from pickle import TRUE			
+import jpype			
+import asposecells			
+jpype.startJVM()			
+from asposecells.api import License, Workbook, CellsHelper, CalculationOptions, SaveFormat, PdfSaveOptions, PivotFieldType, PivotTableStyleType, PivotFieldSubtotalType, LoadOptions, FileFormatType, ShiftType, CellArea			
+
+try:
+    lic = License()
+    lic.setLicense("/opt/knime_server/aspose/Aspose.Cells.Product.Family.lic")
+except:
+    pass
+
+Filepath = flow_variables['output_Working_filePath']
+
+# Load KNIME Data table to Pandas Dataframe
+df1 = input_table_1.copy()
+
+#Use openpyxl to open Excel file
+wb = Workbook(Filepath)
+
+# Insert Formula ###############################################################
+
+# Loop through List of Sheets
+sheet_lst = pd.unique(df1['Sheet_Position'])
+
+for l in sheet_lst:
+    print(l)
+    sheet = l
+    df4 = df1[df1['Sheet_Position'] == sheet]
+    for row in df4.itertuples(index=True, name='Pandas'):
+        sheet_name = getattr(row, "Sheet_Name")
+        paste_value = getattr(row, "Paste_Value")
+        insert_delete = getattr(row, "Insert_Delete")
+        shift_type = getattr(row, "Shift_Type")
+        group_row = getattr(row, "Group_Row")
+        group_startrow = getattr(row, "GrpStart_Row")
+        group_lastrow = getattr(row, "GrpLast_Row")
+        group_col = getattr(row, "Group_Column")
+        group_startcol = getattr(row, "GrpStart_Column")
+        group_lastcol = getattr(row, "GrpLast_Column")
+        sheet_protect = getattr(row, "Sheet_Protect")
+        sheet_password = getattr(row, "Password")
+        remove_sheet = getattr(row, "Remove_Sheet")
+        create_sheet = getattr(row, "New_Sheet")
+        new_sheetname = getattr(row, "New_Sheet_Name")
+        new_move_sheet = getattr(row, "New_Move_Sheet")
+        new_sheetnum = getattr(row, "New_Sheet_Position")
+        move_sheet = getattr(row, "Move_Sheet")
+        src_sheet = getattr(row, "Sheet_Position")
+        dst_sheet = getattr(row, "Move_New_Sheet")
+        rename_sheet = getattr(row, "Rename_Sheet")
+        renamed_sheet = getattr(row, "Rename_Sheetname")
+        hide_sheet = getattr(row, "Hide_Sheet")
+        unhide_sheet = getattr(row, "Unhide_Sheet")
+        start_cell = getattr(row, "Start_Cell")
+        last_cell = getattr(row, "Last_Cell")
+        startcell_row = getattr(row, "Start_Coord_Row")
+        startcell_col = getattr(row, "Start_Coord_Col")
+        endcell_row = getattr(row, "End_Coord_Row")
+        endcell_col = getattr(row, "End_Coord_Col")
+        # Start Editing Sheet
+        if paste_value == "YES":
+            try:
+                wb.getWorksheets().get(sheet).getCells().removeFormulas() #paste value formula results
+            except:
+                pass
+        else:
+            pass
+        if insert_delete == "DELETE":
+            try: #try deleting cell range + shift up / left
+                wb.getWorksheets().get(sheet).getCells().deleteRange(startcell_row,startcell_col ,endcell_row,endcell_col, eval('ShiftType.'+shift_type)) 
+            except:
+                pass
+        elif insert_delete == "INSERT":
+            try: #try inserting cell range + shift down / right
+                cellrange = CellArea().createCellArea(start_cell, last_cell)
+                wb.getWorksheets().get(sheet).getCells().insertRange(cellrange, eval('ShiftType.'+shift_type))
+            except:
+                pass
+        else:
+            pass
+        if group_row == "YES":
+            try: #outline group row
+                wb.getWorksheets().get(sheet).getCells().groupRows(group_startrow,group_lastrow,True)
+            except:
+                pass
+        else:
+            pass
+        if group_col == "YES":
+            try: #outline group column
+                wb.getWorksheets().get(sheet).getCells().groupColumns(group_startcol,group_lastcol,True)
+            except:
+                pass
+        else:
+            pass
+        if sheet_protect == "YES":
+            try: #try inserting password to protect sheet
+                wb.getWorksheets().get(sheet).getProtection().setPassword(sheet_password)
+            except:
+                pass
+        else:
+            pass
+        if remove_sheet == "YES":
+            try: #try deleting sheet by position
+                wb.getWorksheets().removeAt(sheet)
+            except:
+                try: #try deleting sheet by name
+                    wb.getWorksheets().removeAt(sheet_name)	
+                except:
+                    pass
+        else:
+            pass
+        if create_sheet == "YES":
+            try: #create new worksheet
+                sheetIndex = wb.getWorksheets().add()
+                ws = wb.getWorksheets().get(sheetIndex)
+                ws.setName(new_sheetname)
+                if new_move_sheet == "PROCEED": #move new sheet to new position
+                    ws.moveTo(new_sheetnum)
+                else:
+                    pass
+            except:
+                pass
+        else:
+            pass
+        if move_sheet == "YES":
+            try: #try move worksheet to new position
+                ws_src = wb.getWorksheets().get(src_sheet)
+                ws_src.moveTo(dst_sheet)
+            except:
+                pass
+        else:
+            pass
+        if rename_sheet == "YES":
+            try: #try to rename sheet
+                ws_og = wb.getWorksheets().get(sheetIndex)
+                ws_og.setName(renamed_sheet)
+            except:
+                pass
+        else:
+            pass
+        if hide_sheet =="YES":
+            try: #hide sheet
+                wb.getWorksheets().get(sheet).setVisible(False)
+            except:
+                pass
+        else:
+            pass
+        if unhide_sheet =="YES":
+            try: #unhide sheet
+                wb.getWorksheets().get(sheet).setVisible(True)
+            except:
+                pass
+        else:
+            pass        
+
+wb.calculateFormula()
+try:
+    wb.getWorksheets().removeAt("Evaluation Warning")
+except:
+    pass													
+wb.save(Filepath, FileFormatType.XLSX) #saves as XLSX filetype	
+        
+jpype.shutdownJVM()	
+
+output_table_1 = pd.DataFrame({"Location":[Filepath]})
