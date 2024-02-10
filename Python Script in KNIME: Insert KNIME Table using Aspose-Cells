@@ -1,0 +1,89 @@
+import pandas as pd			
+from pandas import DataFrame			
+import pickle			
+from pickle import TRUE			
+import jpype			
+import asposecells			
+jpype.startJVM() #open Java environment			
+from asposecells.api import License, Workbook, CellsHelper, CalculationOptions, SaveFormat, PdfSaveOptions, PivotFieldType, PivotTableStyleType, PivotFieldSubtotalType, LoadOptions, FileFormatType, ShiftType, JsonUtility, JsonLayoutOptions, CellArea				
+
+try: #try look for license in the Knime Server
+    lic = License()
+    lic.setLicense("/opt/knime_server/aspose/Aspose.Cells.Product.Family.lic")
+except: #if none exist
+    pass #then skip to next script
+
+Filepath = flow_variables['output_Working_filePath']
+
+output = Workbook(Filepath) #Open file
+
+# Load KNIME Data table to Pandas Dataframe
+df1 = input_table_1.copy()
+
+sheet_lst = pd.unique(df1['Sheet_Position'])
+
+for l in sheet_lst:
+    print(l)
+    sheet = l
+    worksheet = output.getWorksheets().get(sheet) #get position of the sheet	
+    df4 = df1[df1['Sheet_Position'] == sheet]
+    for row in df4.itertuples(index=True, name='Pandas'):
+        has_header = getattr(row, "Has_Header")
+        text_to_number = getattr(row, "Has_Number_Stored_As_Text")
+        coord_row = getattr(row, "Coordinate_Row")
+        coord_col = getattr(row, "Coordinate_Col")
+        input_table_no = getattr(row, "Input_Table")
+        select_col = getattr(row, "Select_Col")
+        all_rows = getattr(row, "Convert_All_Row")
+        convert_startrow = getattr(row, "Convert_Start_Row")
+        convert_lastrow = getattr(row, "Convert_Last_Row")
+        overlap_row = getattr(row, "Row_Overlap")
+        overlap_startrow = getattr(row, "Start_Row")
+        add_row = getattr(row, "Add_Row")
+        Cells = worksheet.getCells()
+        if overlap_row == "YES": #run if need to move rows below
+            Cells.insertRows(overlap_startrow,add_row) #Insert Number of Row, Shift Down
+        else:
+            pass
+        if has_header == "NO": #run if need to remove the column header
+            Cells.insertRows(coord_row,1) #Insert 1 Row, Shift Down
+        else:
+            pass
+        result = pd.DataFrame(globals()[input_table_no]) #pd.DataFrame(input_table_#)
+        json_string = result.to_json(orient='records') #convert pandas dataframe to json
+        options = JsonLayoutOptions() #setup layout options
+        unit = JsonUtility() #setup json utility
+        options.setArrayAsTable(True) #convert json to table
+        unit.importData(json_string, Cells, coord_row, coord_col, options) #paste table to Excel
+        if has_header == "NO": #run if need to remove the column header
+            Cells.deleteRows(coord_row,1, True) #Delete 1 Row, Shift Up
+        else:
+            pass
+        if text_to_number == "YES": #run if need to convert numbers stored as text to numbers
+            if all_rows == "YES": #if YES convert all rows
+                Row_Number = Cells.getMaxRow() #get last row number with data in the sheet
+                for i in range(Row_Number): #loop until specified number of rows
+                    for j in select_col: #loop until specified number of columns
+                        Value = Cells.get(i, j) #select cell coordinates (row, column)
+                        Value.putValue(Value.getStringValue(), True) #try each cell if it can convert text to numbers
+            else: #if NO
+                if convert_lastrow == 1048576: #if row equals 1048576
+                    max_row = Cells.getMaxRow() #get last row number with data in the sheet
+                    Row_Number = max_row-convert_startrow #get number of row from last row minus start row
+                else:
+                    Row_Number = convert_lastrow-convert_startrow #get number of row from last row minus start row
+                for k in range(Row_Number): #loop until specified number of rows
+                    for m in select_col: #loop until specified number of columns
+                        Value = Cells.get(k+convert_startrow, m) #select cell coordinates (row, column)
+                        Value.putValue(Value.getStringValue(), True) #try each cell if it can convert text to numbers
+        else:
+            pass
+
+try:
+    output.getWorksheets().removeAt("Evaluation Warning")
+except:
+    pass            
+output.save(Filepath, FileFormatType.XLSX) #saves as XLSX filetype	
+jpype.shutdownJVM() #close Java environment
+        
+output_table_1 = pd.DataFrame({"Location":[Filepath]})
