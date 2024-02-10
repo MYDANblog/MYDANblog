@@ -1,0 +1,64 @@
+# Copy input to output
+import pandas as pd
+from pandas import DataFrame
+import pickle			
+from pickle import TRUE			
+import jpype			
+import asposecells			
+jpype.startJVM()			
+from asposecells.api import License, Workbook, CellsHelper, CalculationOptions, SaveFormat, PdfSaveOptions, PivotFieldType, PivotTableStyleType, PivotFieldSubtotalType, LoadOptions, FileFormatType, ShiftType, CellArea			
+
+try:
+    lic = License()
+    lic.setLicense("/opt/knime_server/aspose/Aspose.Cells.Product.Family.lic")
+except:
+    pass
+
+Filepath = flow_variables['output_Working_filePath']
+
+#Use openpyxl to open Excel file
+wb = Workbook(Filepath)
+
+# Load KNIME Data table to Pandas Dataframe
+df1 = input_table_1.copy()
+#wb.calculateFormula()	
+
+sheet_lst = pd.unique(df1['Sheet_Position'])
+
+for l in sheet_lst:
+    print(l)
+    sheet = l
+    ws = wb.getWorksheets().get(sheet)
+    df4 = df1[df1['Sheet_Position'] == sheet]
+    for row in df4.itertuples(index=True, name='Pandas'):
+        no_of_pivot = getattr(row, "No_of_Pivots")
+        sheet_pos = getattr(row, "Sheet_Position")
+        print(no_of_pivot)
+        print(sheet_pos)
+        if no_of_pivot >= 1: #check if sheet has pivot
+            wb.getWorksheets().get(sheet_pos).getCells().removeFormulas()
+            cells = ws.getCells()
+            pivot = getattr(row, "Pivot_Position")
+            print(pivot)
+            try: #get dimensions of each pivot and provide soruce and destination cell ranges for copy paste
+                pivotTable = ws.getPivotTables().get(pivot)
+                r1 = pivotTable.getTableRange2()
+                max_col = cells.getMaxColumn()
+                source = cells.createRange(r1.StartRow, r1.StartColumn, r1.EndRow - r1.StartRow + 1, r1.EndColumn - r1.StartColumn + 1)
+                dest = cells.createRange(r1.StartRow, max_col+10, r1.EndRow - r1.StartRow + 1, r1.EndColumn - r1.StartColumn + 1)
+                dest.copyData(source)
+                dest.copyStyle(source)
+                ws.getPivotTables().removeAt(pivot)
+                move = dest.moveTo(r1.StartRow, r1.StartColumn)
+            except:
+                pass
+        else: #go to next script if no pivot
+            wb.getWorksheets().get(sheet_pos).getCells().removeFormulas()
+
+try:
+    wb.getWorksheets().removeAt("Evaluation Warning")
+except:
+    pass
+wb.save(Filepath, FileFormatType.XLSX) #saves as XLSX filetype	
+jpype.shutdownJVM()	
+output_table_1 = pd.DataFrame({"Location":[Filepath]})
