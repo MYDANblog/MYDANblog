@@ -1,0 +1,483 @@
+import pandas as pd			
+from pandas import DataFrame
+import ast		
+import pickle			
+from pickle import TRUE			
+import jpype			
+import asposecells			
+jpype.startJVM()			
+from asposecells.api import License, Workbook, CellsHelper, CalculationOptions, SaveFormat, PdfSaveOptions, PivotFieldType, PivotTableStyleType, PivotFieldSubtotalType, LoadOptions, FileFormatType, ShiftType, CellArea, ConsolidationFunction, Color			
+
+try:
+    lic = License()
+    lic.setLicense("/opt/knime_server/aspose/Aspose.Cells.Product.Family.lic")
+except:
+    pass
+    
+Filepath = flow_variables['output_Working_filePath']
+
+#Define getColumnName - to get the column letter equivalent of number
+def getColumnName(n):
+     # initialize output string as empty
+    result = ''
+    while n > 0: 
+        # find the index of the next letter and concatenate the letter
+        # to the solution 
+        # here index 0 corresponds to 'A', and 25 corresponds to 'Z'
+        index = (n - 1) % 26
+        result += chr(index + ord('A'))
+        n = (n - 1) // 26
+    return result[::-1]
+
+#Lists of Data Frames for KNIME Output Port
+a_list = []
+b_list = []
+c_list = []
+d_list = []
+e_list = []
+f_list = []
+g_list = []
+h_list = []
+i_list = []
+            
+#open files					
+output = Workbook(Filepath)			
+            
+#Copy workseet from source to template file			
+outputSheets = output.getWorksheets()		
+
+#Create Pivot Tables ##################################################			
+
+# Load KNIME Data table to Pandas Dataframe
+df1 = input_table_1.copy()
+
+# Convert Collection Strings to Nested Lists
+df1['Nested_Page_Items'] = df1['Page_Items'].apply(ast.literal_eval)
+df1['Nested_Column_Items'] = df1['Column_Items'].apply(ast.literal_eval)
+df1['Nested_Row_Items'] = df1['Row_Items'].apply(ast.literal_eval)
+
+# create dataframe with unique Sheet_Position
+uniques = df1.drop_duplicates(subset=['Sheet_Position'], keep='first')
+sheet_lst = pd.unique(uniques['Sheet_Position'])
+
+# iterate through each sheet
+for l in sheet_lst:
+    print(l)
+    sheet = l
+    wsPivotTable = output.getWorksheets().get(sheet) #get position of the sheet	
+    pivotTablesCollection = wsPivotTable.getPivotTables() #create pivot
+    df2 = uniques[uniques['Sheet_Position'] == sheet] #run per sheet in uniques dataframe
+    for row in df2.itertuples(index=True, name='Pandas'): #run each row in uniques dataframe
+        #row items to variable
+        row_overlap = getattr(row, "Row_Overlap")
+        startrow_prior = getattr(row, "Start_Row_Prior")
+        add_rows = getattr(row, "Add_Rows")
+        startrow_after = getattr(row, "Start_Rows_After")
+        delete_rows = getattr(row, "Delete_Rows")
+        col_overlap = getattr(row, "Column_Overlap")
+        startcol_prior = getattr(row, "Start_Col_Prior")
+        add_cols = getattr(row, "Add_Columns")
+        startcol_after = getattr(row, "Start_Col_After")
+        delete_cols = getattr(row, "Delete_Columns")
+        if row_overlap == "YES": #if pivot will overlap row items below then shift rows down		
+            wsPivotTable.getCells().insertRows(startrow_prior,add_rows) #insert rows
+        else:
+            pass
+        if col_overlap == "YES":  #if pivot will overlap col items in the right then shift col right			
+            wsPivotTable.getCells().insertColumns(startcol_prior,add_cols) #insert columns
+        else:
+            pass
+        df3 = df1[df1['Sheet_Position'] == sheet] #run per sheet in input_table_1 dataframe		
+        for row1 in df3.itertuples(index=True, name='Pandas'): #run each row in uniques dataframe
+            #row items to variable
+            sheet_name = getattr(row1, "Sheet_Name")
+            data_source = getattr(row1, "Data_Source")
+            new_datasource = getattr(row1, "ChangeDataSource")
+            cell_address = getattr(row1, "Cell_Address")
+            has_values_area = getattr(row1, "Has_Values_Area")
+            value_fields = getattr(row1, "Value_Fields")
+            has_rows_area = getattr(row1, "Has_Rows_Area")
+            row_fields = getattr(row1, "Row_Fields")
+            has_page_area = getattr(row1, "Has_Page_Area")
+            page_fields = getattr(row1, "Page_Fields")		
+            has_col_area = getattr(row1, "Has_Columns_Area")
+            col_fields = getattr(row1, "Column_Fields")	
+            multi_val_area = getattr(row1, "Multiple_Values_Area")
+            value_calc = getattr(row1, "Value_Calculation")	
+            page_items = getattr(row1, "Nested_Page_Items")	
+            multi_page_items = getattr(row1, "Multiple_Page_Items")	
+            page_select = getattr(row1, "Page_Filter_Select")
+            has_page_filter = getattr(row1, "Has_Page_Filter")
+            col_items = getattr(row1, "Nested_Column_Items")	
+            col_select = getattr(row1, "Columns_Filter_Select")
+            has_col_filter = getattr(row1, "Has_Columns_Filter") 
+            row_items = getattr(row1, "Nested_Row_Items")	
+            row_select = getattr(row1, "Rows_Filter_Select")
+            has_row_filter = getattr(row1, "Has_Rows_Filter") 	
+            repeat_row_label = getattr(row1, "Repeat_Row_Labels") 
+            repeat_col_label = getattr(row1, "Repeat_Column_Labels") 
+            sort_row = getattr(row1, "Sort_Rows")  
+            sort_col = getattr(row1, "Sort_Columns")  
+            col_subtotal = getattr(row1, "Columns_Subtotal")  	
+            row_subtotal = getattr(row1, "Rows_Subtotal")
+            bottom_grandtotal = getattr(row1, "Bottom_Grand_Total")	
+            right_grandtotal = getattr(row1, "Right_Grand_Total")
+            pivot_style = getattr(row1, "Pivot_Style_Type")	
+            pivot_name = getattr(row1, "Pivot_Name")			
+            #Create Pivot Table ################################################################
+            pivotTableIndex = pivotTablesCollection.add(data_source, cell_address, pivot_name) #get the source of pivot and name the pivot table			
+            newPivotTable = pivotTablesCollection.get(pivotTableIndex) #create new blank pivot table
+            #Insert Value Fields in Pivot Table Area ############################
+            if has_values_area == "YES": #check if there are items in value field
+                for i in value_fields: #iterate through list
+                    try: #try to run script
+                        newPivotTable.addFieldToArea(PivotFieldType.DATA, int(i)) #add item to value field in pivot
+                    except: #if fail
+                        pass #then skip
+                newPivotTable.refreshData()	#refresh source data		
+                newPivotTable.calculateData() #calculate pivot data	 																		
+            else: #if "NO"
+                pass #then skip	
+            #Insert Row Fields in Pivot Table Area ##########################
+            if has_rows_area == "YES": #check if there are items in row field
+                for j in row_fields: #iterate through list
+                    try: #try to run script
+                        newPivotTable.addFieldToArea(PivotFieldType.ROW, int(j)) #add item to row field in pivot
+                    except: #if fail
+                        pass #then skip
+                newPivotTable.refreshData()	#refresh source data		
+                newPivotTable.calculateData() #calculate pivot data	 																		
+            else: #if "NO"
+                pass #then skip	
+            #Insert Page Filter Fields in Pivot Table Area ##################
+            if has_page_area == "YES": #check if there are items in row field
+                for k in page_fields: #iterate through list
+                    try: #try to run script
+                        newPivotTable.addFieldToArea(PivotFieldType.PAGE, int(k)) #add item to row field in pivot
+                    except: #if fail
+                        pass #then skip
+                newPivotTable.refreshData()	#refresh source data		
+                newPivotTable.calculateData() #calculate pivot data	 																		
+            else: #if "NO"
+                pass #then skip										
+            #Insert Column Fields in Pivot Table Area ######################
+            if has_col_area == "YES": #check if there are items in row field
+                for m in col_fields: #iterate through list
+                    try: #try to run script
+                        newPivotTable.addFieldToArea(PivotFieldType.COLUMN, int(m)) #add item to row field in pivot
+                    except: #if fail
+                        pass #then skip
+                newPivotTable.refreshData()	#refresh source data		
+                newPivotTable.calculateData() #calculate pivot data	 																		
+            else: #if "NO"
+                pass #then skip	
+            #Move Calculation Item from Row to Column if there are more than 1 Value Field ###########
+            if multi_val_area == "YES": # check if there are more than 1 value fields move calculation from row to column
+                newPivotTable.addFieldToArea(PivotFieldType.COLUMN, newPivotTable.getRowFields().get(0)) #Move Calculated Values of DATA from Row to Column									
+                newPivotTable.refreshData()	#refresh source data
+                newPivotTable.calculateData() #calculate pivot data	
+            else: #if "NO"
+                pass #then skip
+            if has_values_area == "YES": #check if there are items in value field
+                for n, val in enumerate(value_calc): #iterate through the list
+                    if val == "~SKIP~": #check if value_calc = "~SKIP~"
+                        pass #skip
+                    else: #if not
+                        try: #execute script
+                            newPivotTable.getDataFields().get(n).setFunction(int(val)) #change calculation of a value field
+                        except: #if error
+                            pass #then skip
+                newPivotTable.refreshData() #refresh source data
+                newPivotTable.calculateData() #calculate pivot data	
+            else: #if no items in value field
+                pass #then skip
+            #Filter Page Field ##########################################
+            if ((has_page_area == "YES") and (has_page_filter == "YES")): #check if there are items in page field and requires filtering
+                for o, val1 in enumerate(multi_page_items): #iterate through multiple page items
+                    for p, val2 in enumerate(page_items): #iterate through page item lists
+                        for q, val3 in enumerate(page_select): #iterate through select/unselect items	
+                            print(val1)
+                            print(val2)
+                            print(val3)
+                            print(type(val2))
+                            if ((o == p) and (o == q)): #condition to run each loop
+                                if val2 == "~SKIP~": #if page item = "~SKIP~"
+                                    pass #then skip
+                                else: #otherwise run script below
+                                    pivotPageFilter = newPivotTable.getPageFields().get(p) #Page Filter (position in the Pivot Area)			
+                                    pageItemCount = pivotPageFilter.getPivotItems().getCount() #Unique count all items in Page Filter Field
+                                    #Check if criteria exist in the data table ###############
+                                    pageItemList = [] #create list for page items
+                                    for pg in range(pageItemCount): #iterate through each page item
+                                        pgitem = pivotPageFilter.getPivotItems().get(pg).getName() #get name based on item position
+                                        for pgitem in val2: #iterate each item if it matches in the given criteria list
+                                            pivotpgItem = pivotPageFilter.getPivotItems().get(pgitem) #get item position based on name
+                                            try: #try to run and check the index of the pivot item
+                                                if ((int)(pivotpgItem.getIndex())) >= 0: #check if the extracted index is existing
+                                                    pivotpgItemCount = 1 #label them as 1
+                                                else: #if not existing
+                                                    pivotpgItemCount = 0 #then provide 0 value
+                                            except: #if script fail
+                                                pivotpgItemCount = 0 #then set default value to 0
+                                            pageItemList.append(pivotpgItemCount) #append all results to item list
+                                    pgItemDF = DataFrame({'Number_Item':pageItemList}) #create data frame for item list
+                                    sumpgItemDF = pgItemDF['Number_Item'].sum() #add all values in column
+                                    if (sumpgItemDF == 0) and (val3 == "SELECT"): #if dataframe = 0 and criteria needs to be selected
+                                        newPivotTable.changeDataSource([new_datasource]) #then change datasource to include blank row
+                                        newPivotTable.refreshData() #refresh source data
+                                        newPivotTable.calculateData() #calculate pivot data	
+                                        pivotPageFilter.setMultipleItemSelectionAllowed(True) #change page selection to multiple
+                                        try: #try and find the blank criteria
+                                            blankItem = pivotPageFilter.getPivotItems().get("(blank)") #check for (blank) item in list
+                                            print(blankItem)
+                                            blankItemIndex = (int)(blankItem.getIndex()) #return index of (blank) from list
+                                        except:
+                                            try:
+                                                blankItem = pivotPageFilter.getPivotItems().get("") #check for "" item in list
+                                                blankItemIndex = (int)(blankItem.getIndex()) #return index of (blank) from list
+                                            except:
+                                                try:
+                                                    blankItem = pivotPageFilter.getPivotItems().get(" ") #check for " " item in list
+                                                    blankItemIndex = (int)(blankItem.getIndex()) #return index of (blank) from list
+                                                except:
+                                                    blankItemIndex = 0 #set default value to 0
+                                        for a in range(pageItemCount): #run each item in the list
+                                            if a == blankItemIndex: #if list matches with (blank) index
+                                                pivotPageFilter.getPivotItems().get(a).setHidden(False) #select (blank)
+                                            else: #for the rest of the items
+                                                pivotPageFilter.getPivotItems().get(a).setHidden(True) #unselect
+                                        newPivotTable.refreshData() #refresh source data
+                                        newPivotTable.calculateData() #calculate pivot data	
+                                    else: #if criteria above is not met then filter the given criteria
+                                        for a in range(pageItemCount): #run each item in the list		
+                                            item = pivotPageFilter.getPivotItems().get(a).getName() #extract count of criteria	
+                                            try: #try running the script
+                                                if ((val1 == "NO") and (val3 == "SELECT")): #if conditions met then use single select
+                                                    if item in val2: #Select criteria												
+                                                        pivotPageFilter.setCurrentPageItem(a) #single select
+                                                    else: #if not then use multiple select
+                                                        pass #the skip
+                                                else: #otherwise use multiple select
+                                                    pivotPageFilter.setMultipleItemSelectionAllowed(True) #enable multi select in pivot filter
+                                                    if item in val2: #Select criteria		
+                                                        if val3 == "SELECT": #if select
+                                                            pivotPageFilter.getPivotItems().get(a).setHidden(False) #select criteria
+                                                        else: #unselect
+                                                            pivotPageFilter.getPivotItems().get(a).setHidden(True) #unselect criteria					
+                                                    else: #if item is not part of criteria
+                                                        if val3 == "SELECT": #if select
+                                                            pivotPageFilter.getPivotItems().get(a).setHidden(True) #unselect all except criteria
+                                                        else: #unselect
+                                                            pivotPageFilter.getPivotItems().get(a).setHidden(False) #select all except criteria										
+                                                newPivotTable.refreshData() #refresh source data
+                                                newPivotTable.calculateData() #calculate pivot data	
+                                            except: #if error
+                                                pass #then skip
+                            else: #if conditions are not met
+                                pass #then skip			
+            else: #if there are no page items to filter
+                pass #then skip
+            #Filter Column Field ######################################
+            if ((has_col_area == "YES") and (has_col_filter == "YES")): #check if there are items in column field and requires filtering
+                for r, val4 in enumerate(col_items): #iterate through column item lists
+                    for s, val5 in enumerate(col_select): #iterate through select/unselect items	
+                        if r == s: #condition to run each loop
+                            if val4 == "~SKIP~": #if column item = "~SKIP~"
+                                pass #then skip
+                            else: #otherwise run script below
+                                pivotColumnFilter = newPivotTable.getColumnFields().get(r) #Column Filter (position in the Pivot Area)			
+                                colItemCount = pivotColumnFilter.getPivotItems().getCount() #Unique count all items in Column Filter Field
+                                for b in range(colItemCount):		
+                                    item = pivotColumnFilter.getPivotItems().get(b).getName() #extract count of criteria	
+                                    try: #try running the script
+                                        if item in val4: #Select criteria
+                                            if val5 == "SELECT": #if select
+                                                pivotColumnFilter.getPivotItems().get(b).setHidden(False) #select criteria
+                                            else: #unselect
+                                                pivotColumnFilter.getPivotItems().get(b).setHidden(True) #unselect criteria					
+                                        else: #if item is not part of criteria
+                                            if val5 == "SELECT": #if select
+                                                pivotColumnFilter.getPivotItems().get(b).setHidden(True) #unselect all except criteria
+                                            else: #unselect
+                                                pivotColumnFilter.getPivotItems().get(b).setHidden(False) #select all except criteria										
+                                        newPivotTable.refreshData() #refresh source data
+                                        newPivotTable.calculateData() #calculate pivot data	
+                                    except: #if error
+                                        pass #then skip
+                        else: #if condition is not met
+                            pass #then skip			
+            else: #if there are no column items to filter
+                pass #then skip
+            #Filter Row Field ##########################################
+            if ((has_rows_area == "YES") and (has_row_filter == "YES")): #check if there are items in row field and requires filtering
+                for t, val6 in enumerate(row_items): #iterate through row item lists
+                    for u, val7 in enumerate(row_select): #iterate through select/unselect items	
+                        if t == u: #condition to run each loop
+                            if val6 == "~SKIP~": #if row item = "~SKIP~"
+                                pass #then skip
+                            else: #otherwise run script below
+                                pivotRowFilter = newPivotTable.getRowFields().get(t) #Row Filter (position in the Pivot Area)			
+                                rowItemCount = pivotRowFilter.getPivotItems().getCount() #Unique count all items in Row Filter Field
+                                for c in range(rowItemCount):		
+                                    item = pivotRowFilter.getPivotItems().get(c).getName() #extract count of criteria	
+                                    try: #try running the script
+                                        if item in val6: #Select criteria
+                                            if val7 == "SELECT": #if select
+                                                pivotRowFilter.getPivotItems().get(c).setHidden(False) #select criteria
+                                            else: #unselect
+                                                pivotRowFilter.getPivotItems().get(c).setHidden(True) #unselect criteria					
+                                        else: #if item is not part of criteria
+                                            if val7 == "SELECT": #if select
+                                                pivotRowFilter.getPivotItems().get(c).setHidden(True) #unselect all except criteria
+                                            else: #unselect
+                                                pivotRowFilter.getPivotItems().get(c).setHidden(False) #select all except criteria										
+                                        newPivotTable.refreshData() #refresh source data
+                                        newPivotTable.calculateData() #calculate pivot data	
+                                    except: #if error
+                                        pass #then skip
+                        else: #if condition is not met
+                            pass #then skip			
+            else: #if there are no column items to filter
+                pass #then skip
+            # Repeat Column Item Labels // Sort Columns // Subtotals #######################################
+            if has_col_area == "YES": #check if there are items in column field
+                # Repeat Column Item Labels
+                for v, val8 in enumerate(repeat_col_label): #iterate through repeat column label list
+                    if val8 == "YES": #if yes then run script below
+                        try: #try script below
+                            newPivotTable.getColumnFields().get(v).setRepeatItemLabels(True) #repeat column item labels
+                            newPivotTable.refreshData()	#refresh source data		
+                            newPivotTable.calculateData() #calculate pivot data	 
+                        except: #if fail
+                            pass #then skip
+                    else: #if no
+                        pass #then skip
+                # Sort Columns
+                for w, val9 in enumerate(sort_col): #iterate through sort column list
+                    if val9 == "NONE": #if sort_col = "NONE"
+                        pass #skip scripts
+                    else: #otherwise proceed with script below
+                        try: #try to run script below 
+                            if val9 == "ASCENDING": #if sort is ascending
+                                newPivotTable.getColumnFields().get(w).setAutoSort(True)
+                                newPivotTable.getColumnFields().get(w).setAscendSort(True) #Ascending Order
+                            else: #if sort is descending
+                                newPivotTable.getColumnFields().get(w).setAutoSort(True)
+                                newPivotTable.getColumnFields().get(w).setAscendSort(False) #Descending Order
+                            newPivotTable.refreshData()	#refresh source data
+                            newPivotTable.calculateData() #calculate pivot data	
+                        except: #if fail
+                            pass #then skip
+                # Subtotal
+                for x, val10 in enumerate(col_subtotal): #iterate through column subtotal list
+                    try: #try to run scripts below
+                        if val10 == "YES": #check if subtotal is enabled (YES)
+                            newPivotTable.getColumnFields().get(x).setSubtotals(PivotFieldSubtotalType.AUTOMATIC, True) #Enable Subtotal
+                        else: #disable subtotal (NO)
+                            newPivotTable.getColumnFields().get(x).setSubtotals(PivotFieldSubtotalType.AUTOMATIC, False) #Disable Subtotal	
+                        newPivotTable.refreshData()	#refresh source data
+                        newPivotTable.calculateData() #calculate pivot data	
+                    except: #if fail
+                        pass #then skip		 	
+            else: #if no fields in column area
+                pass #then skip
+            # Repeat Row Item Labels // Sort Columns // Subtotals #######################################
+            if has_rows_area == "YES": #check if there are items in row field
+                # Repeat Row Item Labels
+                for y, val11 in enumerate(repeat_row_label): #iterate through repeat row label list
+                    if val11 == "YES": #if yes then run script below
+                        try: #try script below
+                            newPivotTable.getRowFields().get(y).setRepeatItemLabels(True) #repeat row item labels
+                            newPivotTable.refreshData()	#refresh source data		
+                            newPivotTable.calculateData() #calculate pivot data	
+                        except: #if fail
+                            pass #then skip
+                    else: #if no
+                        pass #then skip		
+                # Sort Rows
+                for z, val12 in enumerate(sort_row): #iterate through sort row list
+                    if val12 == "NONE": #if sort_col = "NONE"
+                        pass #skip scripts
+                    else: #otherwise proceed with script below
+                        try: #try to run script below 
+                            if val12 == "ASCENDING": #if sort is ascending
+                                newPivotTable.getRowFields().get(z).setAutoSort(True)
+                                newPivotTable.getRowFields().get(z).setAscendSort(True) #Ascending Order
+                            else: #if sort is descending
+                                newPivotTable.getRowFields().get(z).setAutoSort(True)
+                                newPivotTable.getRowFields().get(z).setAscendSort(False) #Descending Order
+                            newPivotTable.refreshData()	#refresh source data
+                            newPivotTable.calculateData() #calculate pivot data	
+                        except: #if fail
+                            pass #then skip
+                # Subtotal
+                for aa, val13 in enumerate(row_subtotal): #iterate through column subtotal list
+                    try: #try to run scripts below
+                        if val13 == "YES": #check if subtotal is enabled (YES)
+                            newPivotTable.getRowFields().get(aa).setSubtotals(PivotFieldSubtotalType.AUTOMATIC, True) #Enable Subtotal
+                        else: #disable subtotal (NO)
+                            newPivotTable.getRowFields().get(aa).setSubtotals(PivotFieldSubtotalType.AUTOMATIC, False) #Disable Subtotal	
+                        newPivotTable.refreshData()	#refresh source data
+                        newPivotTable.calculateData() #calculate pivot data	
+                    except: #if fail
+                        pass #then skip	
+            else: #if no fields in row area
+                pass #then skip	
+            # Column Grand Total (Bottom Side)
+            if bottom_grandtotal == "YES": #if yes
+                newPivotTable.setColumnGrand(True) #then enable grand total in the bottom
+            else: #if no
+                newPivotTable.setColumnGrand(False) #then disable grand total in the bottom				
+            # Row Grand Total (Right Side)
+            if right_grandtotal == "YES": #if yes
+                newPivotTable.setRowGrand(True) #then enable grand total in the right
+            else: #if no
+                newPivotTable.setRowGrand(False) #then disable grand total in the right	
+            newPivotTable.setPivotTableStyleType(int(pivot_style))							 						
+            newPivotTable.refreshData()	#refresh source data		
+            newPivotTable.calculateData() #calculate pivot data	 
+            newPivotTable.setRefreshDataOnOpeningFile(False) #don't refresh when file is open
+            #List Pivot Coordinates
+            try:
+                pivotTable = pivotTablesCollection.get(pivot_name) #select pivot by name
+                r1 = pivotTable.getTableRange2() #select body + page filter
+                StartRow = r1.StartRow + 1 #get start row of pivot table
+                StartCol = r1.StartColumn + 1 #get start col of pivot table
+                EndRow = r1.EndRow + 1 #get last row of pivot table
+                EndCol = r1.EndColumn + 1 #get last col of pivot table
+                StartCell = getColumnName(StartCol)+str(StartRow) #convert StartRow/Col to Cell Address
+                EndCell = getColumnName(EndCol)+str(EndRow) #convert EndRow/Col to Cell Address
+                #collate all list results
+                a_list.append(sheet_name)
+                b_list.append(sheet)
+                c_list.append(pivot_name)
+                d_list.append(StartRow)
+                e_list.append(StartCol)
+                f_list.append(EndRow)
+                g_list.append(EndCol)
+                h_list.append(StartCell)
+                i_list.append(EndCell)
+            except:
+                pass
+        if row_overlap == "YES": #if yes then rows will shift back up
+            try:
+                wsPivotTable.getCells().deleteRows(startrow_after,delete_rows,True) #delete rows
+            except:
+                pass		
+        else:
+            pass
+        if col_overlap == "YES": #if yes then cols will shift to the left
+            try:	
+                wsPivotTable.getCells().deleteColumns(startcol_after,delete_cols,True) #delete columns
+            except:
+                pass
+        else:
+            pass
+
+try:
+    output.getWorksheets().removeAt("Evaluation Warning")
+except:
+    pass            
+output.save(Filepath, FileFormatType.XLSX) #saves as XLSX filetype			
+output_table_1 = DataFrame({'Sheet_Name':a_list, 'Sheet_Num':b_list, 'Pivot_Name':c_list, 'StartRow':d_list, 'StartCol':e_list, 'EndRow':f_list, 'EndCol':g_list, 'StartCell':h_list, 'EndCell':i_list})
+jpype.shutdownJVM()	
