@@ -123,7 +123,8 @@ for l in sheet_lst:
             bottom_grandtotal = getattr(row1, "Bottom_Grand_Total")	
             right_grandtotal = getattr(row1, "Right_Grand_Total")
             pivot_style = getattr(row1, "Pivot_Style_Type")	
-            pivot_name = getattr(row1, "Pivot_Name")			
+            pivot_name = getattr(row1, "Pivot_Name")
+            pivot_layout = getattr(row1, "Pivot_Layout")	
             #Create Pivot Table ################################################################
             pivotTableIndex = pivotTablesCollection.add(data_source, cell_address, pivot_name) #get the source of pivot and name the pivot table			
             newPivotTable = pivotTablesCollection.get(pivotTableIndex) #create new blank pivot table
@@ -433,7 +434,16 @@ for l in sheet_lst:
                 newPivotTable.setRowGrand(True) #then enable grand total in the right
             else: #if no
                 newPivotTable.setRowGrand(False) #then disable grand total in the right	
-            newPivotTable.setPivotTableStyleType(int(pivot_style))							 						
+            newPivotTable.setPivotTableStyleType(int(pivot_style))
+            #Apply Pivot Table Layout Type          
+            if pivot_layout == "CLASSIC":            
+                newPivotTable.setGridDropZones(True)
+            elif pivot_layout == "COMPACT":          
+                newPivotTable.showInCompactForm()
+            elif pivot_layout == "OUTLINE":
+                newPivotTable.showInOutlineForm()
+            else: #Default = Tabular Form
+                newPivotTable.showInTabularForm()				 						
             newPivotTable.refreshData()	#refresh source data		
             newPivotTable.calculateData() #calculate pivot data	 
             newPivotTable.setRefreshDataOnOpeningFile(False) #don't refresh when file is open
