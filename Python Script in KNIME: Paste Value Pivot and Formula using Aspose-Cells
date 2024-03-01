@@ -21,7 +21,7 @@ wb = Workbook(Filepath)
 
 # Load KNIME Data table to Pandas Dataframe
 df1 = input_table_1.copy()
-#wb.calculateFormula()	
+wb.calculateFormula()	
 
 sheet_lst = pd.unique(df1['Sheet_Position'])
 
