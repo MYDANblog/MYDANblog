@@ -1,3 +1,5 @@
+#Update 2/24/2024 - Add SetArrayFormula scripts
+#Update 3/7/2024 - Add Feature: AutoFill using Paste Formula
 import pandas as pd
 from pandas import DataFrame
 import pickle			
@@ -5,7 +7,7 @@ from pickle import TRUE
 import jpype			
 import asposecells			
 jpype.startJVM()			
-from asposecells.api import License, Workbook, CellsHelper, CalculationOptions, SaveFormat, PdfSaveOptions, PivotFieldType, PivotTableStyleType, PivotFieldSubtotalType, LoadOptions, FileFormatType, ShiftType, CellArea			
+from asposecells.api import License, Workbook, CellsHelper, CalculationOptions, SaveFormat, PdfSaveOptions, PivotFieldType, PivotTableStyleType, PivotFieldSubtotalType, LoadOptions, FileFormatType, ShiftType, CellArea, PasteOptions			
 
 try:
     lic = License()
@@ -27,24 +29,41 @@ wb = Workbook(Filepath)
 sheet_lst = pd.unique(df1['Sheet_Position'])
 
 for l in sheet_lst:
-      print(l)
-      sheet = l
-      ws = wb.getWorksheets().get(sheet)
-      df4 = df1[df1['Sheet_Position'] == sheet]
-      for row in df4.itertuples(index=True, name='Pandas'):
-            # Set the cell to be updated
-            cell = getattr(row, "Cell_Address")
-            # Update the Sheet / Cell with the Value
-            f = "=" + getattr(row, "Formula")
-            print(f)
-            try:
+    sheet = l
+    ws = wb.getWorksheets().get(sheet)
+    df4 = df1[df1['Sheet_Position'] == sheet]
+    for row in df4.itertuples(index=True, name='Pandas'):
+        # Set the cell to be updated
+        cell = getattr(row, "Cell_Address")
+        # Update the Sheet / Cell with the Value
+        formula = getattr(row, "Formula")
+        autofill = getattr(row, "AutoFill")
+        src_range = getattr(row, "Source_Range")
+        dest_range = getattr(row, "Dest_Range")
+        if str(formula.startswith("{")) == "True": #check if formula is an array formula
+            array_formula = formula[1:] #remove first character {
+            array_formula = array_formula[:-1] #remove last character }
+            ws.getCells().get(cell).setArrayFormula(array_formula, 1, 1) #apply CTRL+SHIFT+ENTER
+        else: #run regular formula
+            f = "=" + formula
+            try: #try running formula as is
                 ws.getCells().get(cell).setFormula(f)
-            except:
-                g = "='" + getattr(row, "Formula")
-                print(g)
+            except: #else insert single quote
+                g = "='" + formula
                 ws.getCells().get(cell).setFormula(g)
+        try:
+            if autofill == "YES":
+                src = ws.getCells().createRange(src_range)
+                options = PasteOptions()
+                options.setPasteType(8)
+                dst = ws.getCells().createRange(dest_range)
+                dst.copy(src, options)
+            else:
+                pass
+        except:
+            pass
 
-wb.calculateFormula()
+wb.calculateFormula() #refresh formula
 try:
     wb.getWorksheets().removeAt("Evaluation Warning")
 except:
